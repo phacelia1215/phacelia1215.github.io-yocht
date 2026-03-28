@@ -429,7 +429,7 @@ body {
 
 /* ============ 3Dサイコロ ============ */
 .die-wrapper {
-  perspective: 600px;
+  perspective: 400px;
   width: 72px;
   height: 72px;
 }
@@ -438,11 +438,10 @@ body {
   width: 72px;
   height: 72px;
   position: relative;
-  transform-style: preserve-3d;
+  /* preserve-3d を履いない→フラットあ1面表示。アニメーションは rotateX/Y/Z でスピンエフェクト */
   cursor: pointer;
-  transform: rotateX(0deg) rotateY(0deg);
   filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transition: filter 0.2s ease;
   user-select: none;
 }
 
@@ -457,6 +456,7 @@ body {
 
 .die-face {
   position: absolute;
+  inset: 0;
   width: 72px;
   height: 72px;
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -471,15 +471,9 @@ body {
     inset 0 2px 4px rgba(255,255,255,0.8),
     inset 0 -2px 4px rgba(0,0,0,0.15),
     0 2px 8px rgba(0,0,0,0.3);
+  /* アニメーション中に裏面が見えないようにする */
+  backface-visibility: hidden;
 }
-
-/* 各面の配置 */
-.die-face.face-front  { transform: rotateY(0deg)    translateZ(36px); }
-.die-face.face-back   { transform: rotateY(180deg)  translateZ(36px); }
-.die-face.face-right  { transform: rotateY(90deg)   translateZ(36px); }
-.die-face.face-left   { transform: rotateY(-90deg)  translateZ(36px); }
-.die-face.face-top    { transform: rotateX(90deg)   translateZ(36px); }
-.die-face.face-bottom { transform: rotateX(-90deg)  translateZ(36px); }
 
 .pip {
   border-radius: 50%;
@@ -523,7 +517,7 @@ body {
   80%  { transform: rotateX(2600deg) rotateY(1760deg) rotateZ(730deg) translateX(-10px) translateY(-25px) scale(1.04); filter: brightness(1.15); }
   90%  { transform: rotateX(2850deg) rotateY(1920deg) rotateZ(800deg) translateX(5px) translateY(-8px) scale(1.01); filter: brightness(1.05); }
   96%  { transform: rotateX(2980deg) rotateY(2010deg) rotateZ(840deg) translateX(-2px) translateY(-2px) scale(1); }
-  100% { transform: rotateX(3240deg) rotateY(2160deg) rotateZ(900deg) translateX(0) translateY(0) scale(1); filter: brightness(1) drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+  100% { transform: rotateX(3240deg) rotateY(2160deg) rotateZ(720deg) translateX(0) translateY(0) scale(1); filter: brightness(1) drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
 }
 
 @keyframes dice-roll-2 {
@@ -536,7 +530,7 @@ body {
   75%  { transform: rotateX(-2350deg) rotateY(1580deg) rotateZ(-660deg) translateX(-15px) translateY(-35px) scale(1.05); }
   88%  { transform: rotateX(-2650deg) rotateY(1790deg) rotateZ(-750deg) translateX(8px) translateY(-12px) scale(1.02); }
   96%  { transform: rotateX(-2840deg) rotateY(1920deg) rotateZ(-810deg) translateX(-2px) translateY(-3px) scale(1.0); }
-  100% { transform: rotateX(-3240deg) rotateY(2160deg) rotateZ(-900deg) translateX(0) translateY(0) scale(1); }
+  100% { transform: rotateX(-3240deg) rotateY(2160deg) rotateZ(-720deg) translateX(0) translateY(0) scale(1); }
 }
 
 @keyframes dice-roll-3 {
@@ -548,7 +542,7 @@ body {
   70%  { transform: rotateX(2200deg) rotateY(-1450deg) rotateZ(630deg) translateX(-20px) translateY(-60px) scale(1.1); }
   85%  { transform: rotateX(2600deg) rotateY(-1700deg) rotateZ(750deg) translateX(10px) translateY(-25px) scale(1.04); }
   95%  { transform: rotateX(2900deg) rotateY(-1900deg) rotateZ(840deg) translateX(-3px) translateY(-5px) scale(1.01); }
-  100% { transform: rotateX(3240deg) rotateY(-2160deg) rotateZ(900deg) translateX(0) translateY(0) scale(1); }
+  100% { transform: rotateX(3240deg) rotateY(-2160deg) rotateZ(720deg) translateX(0) translateY(0) scale(1); }
 }
 
 .die.rolling-anim-1 {

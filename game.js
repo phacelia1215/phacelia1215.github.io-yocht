@@ -24,12 +24,12 @@ const CATEGORIES = [
   { id: 'fives',         label: 'ファイブズ',           desc: '5の目の合計',        section: 'upper' },
   { id: 'sixes',         label: 'シックスズ',           desc: '6の目の合計',        section: 'upper' },
   // 下半部
-  { id: 'chance',        label: 'チャンス',             desc: '全サイコロの合計',      section: 'lower' },
-  { id: 'full_house',    label: 'フルハウス',           desc: '3つ+2つ同じ → 25点',   section: 'lower' },
-  { id: 'four_of_a_kind',label: 'フォーオブアカインド', desc: '4つ以上同じ → 40点',   section: 'lower' },
-  { id: 'small_straight',label: 'スモールストレート',   desc: '4連続 → 30点',          section: 'lower' },
-  { id: 'large_straight',label: 'ラージストレート',     desc: '5連続 → 40点',          section: 'lower' },
-  { id: 'yacht',         label: 'ヨット！',             desc: '5つ全部同じ → 50点',    section: 'lower' },
+  { id: 'chance',        label: 'チャンス',             desc: '全サイコロの合計',               section: 'lower' },
+  { id: 'full_house',    label: 'フルハウス',           desc: '3＋2ゾロ目（ヨット含む）→ 25点', section: 'lower' },
+  { id: 'four_of_a_kind',label: 'フォーオブアカインド', desc: '4つ以上同じ → 全ダイスの合計',   section: 'lower' },
+  { id: 'small_straight',label: 'スモールストレート',   desc: '4連続 → 30点',                   section: 'lower' },
+  { id: 'large_straight',label: 'ラージストレート',     desc: '5連続 → 40点',                   section: 'lower' },
+  { id: 'yacht',         label: 'ヨット！',             desc: '5つ全部同じ → 50点',             section: 'lower' },
 ];
 
 const PLAYER_COLORS = ['#3b82f6', '#f59e0b', '#22c55e', '#ec4899'];
@@ -73,6 +73,7 @@ const state = {
   isRolling: false,
   localDice: [0, 0, 0, 0, 0],
   localHeld: [false, false, false, false, false],
+  localRollsRemaining: 3,  // state.game.rolls_remaining はRealtime遅延で stale になるためローカル管理
 };
 
 /* ---------- ユーティリティ ---------- */
@@ -250,7 +251,7 @@ async function startGame() {
 /* ---------- サイコロを振る ---------- */
 async function performRoll() {
   if (!isMyTurn()) return;
-  if (state.game.rolls_remaining <= 0) {
+  if (state.localRollsRemaining <= 0) {
     showToast('これ以上振れません。スコアを選択してください', 'error');
     return;
   }
@@ -270,9 +271,10 @@ async function performRoll() {
   // アニメーション実行
   await animateDiceRoll(newDice, state.localHeld);
 
-  // ローカル状態更新
+  // ローカル状態更新（DBに保存する前に更新し、Realtimeイベントで上書きされても使えるようにする）
   state.localDice = newDice;
-  const newRolls = state.game.rolls_remaining - 1;
+  const newRolls = state.localRollsRemaining - 1;
+  state.localRollsRemaining = newRolls;
 
   // DBに保存
   const { data, error } = await supabaseClient
@@ -309,8 +311,8 @@ async function performRoll() {
 /* ---------- サイコロホールド切り替え ---------- */
 function toggleHold(index) {
   if (!isMyTurn()) return;
-  if (state.game.rolls_remaining <= 0) return;
-  if (state.game.rolls_remaining === 3) return; // 一度も振っていない
+  // localDice に有効値がなければまだ振っていない（Realtimeの値ではなくlocalで判断）
+  if (!state.localDice.some(d => d >= 1 && d <= 6)) return;
 
   state.localHeld[index] = !state.localHeld[index];
   renderDice();
@@ -319,14 +321,15 @@ function toggleHold(index) {
 /* ---------- スコア記録 ---------- */
 async function recordScore(categoryId) {
   if (!isMyTurn()) return;
-  if (state.game.rolls_remaining === 3) {
+  // localDice に有効値がなければまだロールしていない
+  if (!state.localDice.some(d => d >= 1 && d <= 6)) {
     showToast('先にサイコロを振ってください', 'error');
     return;
   }
 
   const myPlayer = state.players.find(p => p.id === state.playerId);
   if (!myPlayer) return;
-  if (myPlayer.scores && myPlayer.scores[categoryId] !== undefined) {
+  if (myPlayer.scores && myPlayer.scores[categoryId] !== undefined && myPlayer.scores[categoryId] !== null) {
     showToast('このカテゴリはすでに使用済みです', 'error');
     return;
   }
@@ -384,37 +387,59 @@ async function advanceTurn() {
 
 /* ---------- スコア計算 ---------- */
 function calculateScore(categoryId, dice) {
+  // 有効なサイコロのみ（0は未ロール）
+  const validDice = dice.filter(d => d >= 1 && d <= 6);
+  if (validDice.length === 0) return 0;
+
   const counts = {};
-  for (const d of dice) counts[d] = (counts[d] || 0) + 1;
+  for (const d of validDice) counts[d] = (counts[d] || 0) + 1;
   const countVals = Object.values(counts);
-  const sum = dice.reduce((s, d) => s + d, 0);
+  const sum = validDice.reduce((s, d) => s + d, 0);
+  const maxCount = Math.max(...countVals);
 
   switch (categoryId) {
-    case 'ones':   return dice.filter(d => d === 1).reduce((s, d) => s + d, 0);
-    case 'twos':   return dice.filter(d => d === 2).reduce((s, d) => s + d, 0);
-    case 'threes': return dice.filter(d => d === 3).reduce((s, d) => s + d, 0);
-    case 'fours':  return dice.filter(d => d === 4).reduce((s, d) => s + d, 0);
-    case 'fives':  return dice.filter(d => d === 5).reduce((s, d) => s + d, 0);
-    case 'sixes':  return dice.filter(d => d === 6).reduce((s, d) => s + d, 0);
+    // 上半部: 指定した目の合計
+    case 'ones':   return (counts[1] || 0) * 1;
+    case 'twos':   return (counts[2] || 0) * 2;
+    case 'threes': return (counts[3] || 0) * 3;
+    case 'fours':  return (counts[4] || 0) * 4;
+    case 'fives':  return (counts[5] || 0) * 5;
+    case 'sixes':  return (counts[6] || 0) * 6;
+
+    // チャンス: 全ダイスの合計
     case 'chance': return sum;
-    case 'full_house':
-      return (countVals.includes(3) && countVals.includes(2)) ? 25 : 0;
+
+    // フルハウス: 3+2ゾロ目 or ヨット(5つ同じ) → 25点固定
+    case 'full_house': {
+      const isYacht     = maxCount === 5;
+      const isFullHouse = countVals.length === 2 && (countVals.includes(3) && countVals.includes(2));
+      return (isYacht || isFullHouse) ? 25 : 0;
+    }
+
+    // フォーオブアカインド: 4つ以上同じ → 全ダイスの合計
     case 'four_of_a_kind':
-      return countVals.some(c => c >= 4) ? 40 : 0;
+      return maxCount >= 4 ? sum : 0;
+
+    // スモールストレート: 4連続 → 30点
     case 'small_straight': {
-      const uniq = [...new Set(dice)].sort((a, b) => a - b);
-      const straights = [[1,2,3,4],[2,3,4,5],[3,4,5,6]];
-      const ok = straights.some(s => s.every(n => uniq.includes(n)));
-      return ok ? 30 : 0;
+      const uniq = [...new Set(validDice)].sort((a, b) => a - b);
+      const runs = [[1,2,3,4],[2,3,4,5],[3,4,5,6]];
+      return runs.some(r => r.every(n => uniq.includes(n))) ? 30 : 0;
     }
+
+    // ラージストレート: 5連続(全目異なる) → 40点
     case 'large_straight': {
-      const uniq = [...new Set(dice)].sort((a, b) => a - b);
-      const ok = (JSON.stringify(uniq) === JSON.stringify([1,2,3,4,5]) ||
-                  JSON.stringify(uniq) === JSON.stringify([2,3,4,5,6]));
-      return ok ? 40 : 0;
+      const uniq = [...new Set(validDice)].sort((a, b) => a - b);
+      if (uniq.length !== 5) return 0;
+      // 隣同士がすべて +1 になっているか確認
+      const isSeq = uniq.every((v, i) => i === 0 || v === uniq[i - 1] + 1);
+      return isSeq ? 40 : 0;
     }
+
+    // ヨット: 5つ全部同じ → 50点
     case 'yacht':
-      return countVals.includes(5) ? 50 : 0;
+      return maxCount === 5 ? 50 : 0;
+
     default:
       return 0;
   }
@@ -423,9 +448,11 @@ function calculateScore(categoryId, dice) {
 /* ---------- 上半部ボーナス計算 ---------- */
 function calcUpperBonus(scores) {
   const upperIds = ['ones','twos','threes','fours','fives','sixes'];
-  const total = upperIds.reduce((s, id) => s + (scores[id] || 0), 0);
-  const filled = upperIds.every(id => scores[id] !== undefined);
-  return { total, bonus: filled && total >= 63 ? 35 : 0, filled };
+  // null/undefined どちらでも 0 扱い
+  const total  = upperIds.reduce((s, id) => s + (Number(scores[id]) || 0), 0);
+  const filled = upperIds.every(id => scores[id] !== undefined && scores[id] !== null);
+  const bonus  = filled && total >= 63 ? 35 : 0;
+  return { total, bonus, filled };
 }
 
 /* ---------- 合計スコア計算 ---------- */
@@ -433,7 +460,7 @@ function calcTotalScore(scores) {
   const { bonus } = calcUpperBonus(scores);
   let total = bonus;
   for (const cat of CATEGORIES) {
-    if (scores[cat.id] !== undefined) total += scores[cat.id];
+    if (scores[cat.id] !== undefined && scores[cat.id] !== null) total += Number(scores[cat.id]);
   }
   return total;
 }
@@ -451,7 +478,8 @@ function isMyTurn() {
 function updateGameHeader() {
   if (!state.game) return;
   document.getElementById('round-num').textContent = state.game.current_round;
-  document.getElementById('rolls-left').textContent = state.game.rolls_remaining;
+  // 残りロール数はローカル管理値を使う（Realtimeで stale になる state.game.rolls_remaining は表示のみに使わない）
+  document.getElementById('rolls-left').textContent = isMyTurn() ? state.localRollsRemaining : state.game.rolls_remaining;
 
   const cp = state.players[state.game.current_player_index];
   document.getElementById('current-turn').textContent = cp ? cp.name : '-';
@@ -461,9 +489,11 @@ function updateGameHeader() {
   const holdHint = document.getElementById('hold-hint');
 
   if (isMyTurn()) {
-    rollBtn.disabled = state.game.rolls_remaining <= 0 || state.isRolling;
+    // localDice / localRollsRemaining で判断（Realtime stale の state.game は使わない）
+    const hasRolledLocal = state.localDice.some(d => d >= 1 && d <= 6);
+    rollBtn.disabled = state.localRollsRemaining <= 0 || state.isRolling;
     myTurnHint.style.display = 'none';
-    if (state.game.rolls_remaining < 3 && state.game.rolls_remaining > 0) {
+    if (hasRolledLocal && state.localRollsRemaining > 0) {
       holdHint.classList.remove('hidden');
     }
   } else {
@@ -524,13 +554,14 @@ function renderDice() {
   const dice = state.localDice;
   const held = state.localHeld;
   const myTurn = isMyTurn();
-  const canHold = myTurn && state.game && state.game.rolls_remaining < 3 && state.game.rolls_remaining > 0;
+  // localDice に有効値があれば「ロール済み」→ホールド可能（Realtimeの遅延で stale になる state.game.rolls_remaining は使わない）
+  const canHold = myTurn && state.localDice.some(d => d >= 1 && d <= 6);
 
   container.innerHTML = dice.map((val, i) => {
     const isHeld = held[i];
     return `
       <div class="die-wrapper ${isHeld ? 'held-wrapper' : ''}" style="position:relative;">
-        ${buildDieHTML(val, i, isHeld, myTurn, canHold)}
+        ${buildDieHTML(val, i, isHeld)}
         <div class="hold-label">${isHeld ? 'HOLD' : ''}</div>
       </div>
     `;
@@ -544,24 +575,23 @@ function renderDice() {
   });
 }
 
-function buildDieHTML(val, index, isHeld, myTurn, canHold) {
-  const pipGrid = buildPipGrid(val);
+function buildDieHTML(val, index, isHeld) {
   const heldClass = isHeld ? 'held' : '';
-  const interactClass = (myTurn && canHold) ? 'interactive' : '';
+  // face-front のみ（1面フラット表示）
+  // アニメーション中は .die 要素自体が rotateX/Y/Z でスピンする「カード回転」演出
   return `
     <div class="die ${heldClass}" data-index="${index}" title="${isHeld ? 'ホールド解除' : 'ホールド'}">
       <div class="die-face face-front">${buildPipGrid(val)}</div>
-      <div class="die-face face-back">${buildPipGrid(7 - val)}</div>
-      <div class="die-face face-right">${buildPipGrid(val === 1 ? 2 : val === 2 ? 1 : val === 3 ? 4 : val === 4 ? 3 : val === 5 ? 6 : 5)}</div>
-      <div class="die-face face-left">${buildPipGrid(val === 1 ? 5 : val === 5 ? 1 : val === 2 ? 6 : val === 6 ? 2 : val === 3 ? 4 : 3)}</div>
-      <div class="die-face face-top">${buildPipGrid(val === 1 ? 2 : val === 2 ? 1 : 3)}</div>
-      <div class="die-face face-bottom">${buildPipGrid(val === 1 ? 5 : val === 5 ? 1 : 4)}</div>
     </div>
   `;
 }
 
 function buildPipGrid(val) {
-  const positions = PIP_POSITIONS[val] || PIP_POSITIONS[1];
+  const positions = PIP_POSITIONS[val];
+  if (!positions) {
+    // 未ロール状態(0) や範囲外は空白表示
+    return Array(9).fill(0).map(() => '<div class="pip"></div>').join('');
+  }
   const cells = Array(9).fill(false);
   positions.forEach(i => cells[i] = true);
   return cells.map(active => `<div class="pip ${active ? 'active' : ''}"></div>`).join('');
@@ -575,7 +605,9 @@ function buildScoreTable() {
   const myTurn = isMyTurn();
   const myPlayer = state.players.find(p => p.id === state.playerId);
   const myScores = myPlayer ? (myPlayer.scores || {}) : {};
-  const hasRolled = state.game && state.game.rolls_remaining < 3;
+  // rolls_remaining は Realtime の遅延イベントで上書きされる可能性があるため
+  // localDice に有効値(1-6)が存在するかどうかで「ロール済み」を判定する
+  const hasRolled = state.localDice.some(d => d >= 1 && d <= 6);
 
   // ヘッダー行
   let html = `<thead><tr>
@@ -628,8 +660,8 @@ function buildCategoryRow(cat, myTurn, myScores, hasRolled) {
     const scores = p.scores || {};
     const isMe = p.id === state.playerId;
 
-    if (scores[cat.id] !== undefined) {
-      const val = scores[cat.id];
+    if (scores[cat.id] !== undefined && scores[cat.id] !== null) {
+      const val = Number(scores[cat.id]);
       return `<td class="score-cell filled ${val === 0 ? 'zero' : ''}">${val}</td>`;
     }
 
@@ -652,8 +684,6 @@ function buildCategoryRow(cat, myTurn, myScores, hasRolled) {
 async function animateDiceRoll(newDice, heldDice) {
   const container = document.getElementById('dice-container');
   const dieEls = container.querySelectorAll('.die');
-
-  // アニメーションクラスのバリエーション
   const animNames = ['rolling-anim-1', 'rolling-anim-2', 'rolling-anim-3'];
 
   const promises = Array.from(dieEls).map((dieEl, i) => {
@@ -662,19 +692,25 @@ async function animateDiceRoll(newDice, heldDice) {
     return new Promise(resolve => {
       // 前のアニメーションをリセット
       dieEl.classList.remove('rolling-anim-1', 'rolling-anim-2', 'rolling-anim-3', 'pre-shake');
+      dieEl.style.transform = '';  // 念のため transform をリセット
 
-      // ランダムな遅延（最大0.3s）
-      const delay = randomInt(0, 300);
-      const animIdx = i % animNames.length;
+      // アニメーション開始前に face-front を新しい値に書き換える
+      const frontFace = dieEl.querySelector('.face-front');
+      if (frontFace) frontFace.innerHTML = buildPipGrid(newDice[i]);
+
+      const delay    = randomInt(0, 200);
+      const animIdx  = i % animNames.length;
       const animClass = animNames[animIdx];
       const duration = 1400 + (i * 100) + delay;
 
       setTimeout(() => {
         dieEl.classList.add(animClass);
-      }, delay * 0.3);
+      }, delay);
 
       setTimeout(() => {
         dieEl.classList.remove('rolling-anim-1', 'rolling-anim-2', 'rolling-anim-3');
+        // アニメーション終了後に transform を明示的にリセット（fills-mode の残留を消す）
+        dieEl.style.transform = '';
         resolve();
       }, duration);
     });
@@ -682,13 +718,12 @@ async function animateDiceRoll(newDice, heldDice) {
 
   await Promise.all(promises);
 
-  // ロールボタン揺らし
-  document.getElementById('roll-btn').querySelector('.roll-btn-icon').style.animation = 'none';
-
-  // パーティクル
+  // パーティクル（ロールボタン付近）
   const rollBtn = document.getElementById('roll-btn');
-  const rect = rollBtn.getBoundingClientRect();
-  createParticles(rect.left + rect.width / 2, rect.top, 15);
+  if (rollBtn) {
+    const rect = rollBtn.getBoundingClientRect();
+    createParticles(rect.left + rect.width / 2, rect.top, 15);
+  }
 }
 
 /* ---------- パーティクルエフェクト ---------- */
@@ -828,34 +863,63 @@ function subscribeToGame() {
         const prev = state.game;
         state.game = payload.new;
 
-        // ターンが変わったら dice/held をリセット
-        if (!prev || prev.current_player_index !== state.game.current_player_index) {
-          state.localDice = [...state.game.dice];
-          state.localHeld = [...state.game.held];
-          document.getElementById('hold-hint').classList.add('hidden');
-
-          if (isMyTurn()) {
-            showToast('あなたのターンです！', 'success');
-          }
-        } else {
-          // 他のプレイヤーがロールした場合
-          if (!isMyTurn()) {
-            state.localDice = [...state.game.dice];
-            state.localHeld = [...state.game.held];
-          }
-        }
-
+        // ゲーム終了
         if (state.game.status === 'finished') {
           await refreshPlayers();
           showResult();
           return;
         }
 
-        await refreshPlayers();
-        renderDice();
-        updateGameHeader();
-        buildScoreTable();
-        renderPlayerStatusList();
+        const turnChanged = !prev || prev.current_player_index !== state.game.current_player_index;
+
+        if (turnChanged) {
+          // ターンが変わった → ダイスとロール回数をリセット
+          state.localDice = [...state.game.dice];
+          state.localHeld = [...state.game.held];
+          state.localRollsRemaining = 3;
+          document.getElementById('hold-hint').classList.add('hidden');
+          if (isMyTurn()) {
+            showToast('あなたのターンです！', 'success');
+          }
+          await refreshPlayers();
+          renderDice();
+          updateGameHeader();
+          buildScoreTable();
+          renderPlayerStatusList();
+
+        } else if (!isMyTurn()) {
+          // 他プレイヤーのターンで変化があった
+          const newDice = [...state.game.dice];
+          const newHeld = [...state.game.held];
+          const rollsDecreased = prev && state.game.rolls_remaining < prev.rolls_remaining;
+          const diceChanged = newDice.some((d, idx) => d !== state.localDice[idx]);
+
+          if (rollsDecreased && diceChanged) {
+            // 他プレイヤーがサイコロを振った → アニメーション表示
+            renderDice(); // 現在の古い値でDOMを構築
+            await animateDiceRoll(newDice, newHeld);
+            state.localDice = newDice;
+            state.localHeld = newHeld;
+          } else {
+            state.localDice = newDice;
+            state.localHeld = newHeld;
+          }
+
+          await refreshPlayers();
+          renderDice();
+          updateGameHeader();
+          buildScoreTable();
+          renderPlayerStatusList();
+
+        } else {
+          // 自分のターン中のRealtimeイベント
+          // ★ localDice は performRoll で直接セット済みなので絶対に上書きしない
+          //   （スコア記録→ターン進行UPDATEで dice=[0,0,0,0,0] が届いても無視）
+          await refreshPlayers();
+          updateGameHeader();
+          buildScoreTable();
+          renderPlayerStatusList();
+        }
       }
     )
     .on(
@@ -943,51 +1007,6 @@ function setupEventListeners() {
     btn.textContent = '接続する';
   });
 
-  /* --- ロビー画面 --- */
-  document.getElementById('create-room-btn').addEventListener('click', async () => {
-    const name = document.getElementById('player-name').value.trim();
-    if (!name) { showToast('名前を入力してください', 'error'); return; }
-
-    const btn = document.getElementById('create-room-btn');
-    btn.disabled = true;
-
-    try {
-      await createRoom(name);
-      await refreshPlayers();
-      document.getElementById('room-code-show').textContent = state.roomCode;
-      renderWaitingPlayers();
-      subscribeToGame();
-      showScreen('waiting-screen');
-    } catch (e) {
-      showToast(e.message, 'error');
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  document.getElementById('join-room-btn').addEventListener('click', async () => {
-    const name = document.getElementById('player-name').value.trim();
-    const code = document.getElementById('room-code-input').value.trim();
-    if (!name) { showToast('名前を入力してください', 'error'); return; }
-    if (code.length !== 4) { showToast('4文字のルームコードを入力してください', 'error'); return; }
-
-    const btn = document.getElementById('join-room-btn');
-    btn.disabled = true;
-
-    try {
-      await joinRoom(name, code);
-      await refreshPlayers();
-      document.getElementById('room-code-show').textContent = state.roomCode;
-      renderWaitingPlayers();
-      subscribeToGame();
-      showScreen('waiting-screen');
-    } catch (e) {
-      showToast(e.message, 'error');
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
   // Enterキーでルームコード入力
   document.getElementById('room-code-input').addEventListener('input', function() {
     this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1019,6 +1038,7 @@ function setupEventListeners() {
       playerId: null, playerName: null, gameId: null, roomCode: null,
       isHost: false, players: [], game: null,
       localDice: [0,0,0,0,0], localHeld: [false,false,false,false,false],
+      localRollsRemaining: 3,
     });
     showScreen('lobby-screen');
   });
@@ -1039,6 +1059,7 @@ function setupEventListeners() {
       playerId: null, playerName: null, gameId: null, roomCode: null,
       isHost: false, players: [], game: null,
       localDice: [0,0,0,0,0], localHeld: [false,false,false,false,false],
+      localRollsRemaining: 3,
     });
     document.getElementById('player-name').value = '';
     showScreen('lobby-screen');
@@ -1113,6 +1134,7 @@ function initWaitingScreen() {
 function initGameScreen() {
   state.localDice = [...(state.game.dice || [0,0,0,0,0])];
   state.localHeld = [...(state.game.held || [false,false,false,false,false])];
+  state.localRollsRemaining = state.game.rolls_remaining !== undefined ? state.game.rolls_remaining : 3;
   renderDice();
   updateGameHeader();
   buildScoreTable();
