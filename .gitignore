@@ -1,0 +1,8 @@
+# Supabase認証情報が含まれる場合はgame.jsをGitから除外し、
+# game.example.js（CONFIGが空のもの）をコミットする運用を推奨。
+# ただし今回はCONFIGを空にして管理する方針のためgame.jsはコミット対象。
+
+# 環境設定ファイル（将来的に分離した場合）
+config.local.js
+.env
+.env.local

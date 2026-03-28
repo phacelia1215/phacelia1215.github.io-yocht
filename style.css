@@ -1,0 +1,921 @@
+/* ============================================
+   ヨットダイスゲーム - スタイルシート
+   ============================================ */
+
+/* --- リセット & 変数 --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-deep:    #060b1f;
+  --bg-dark:    #0d1533;
+  --bg-card:    rgba(255,255,255,0.06);
+  --bg-card2:   rgba(255,255,255,0.10);
+  --primary:    #3b82f6;
+  --primary-h:  #60a5fa;
+  --secondary:  #7c3aed;
+  --accent:     #f59e0b;
+  --danger:     #ef4444;
+  --success:    #22c55e;
+  --text:       #f1f5f9;
+  --text-muted: #94a3b8;
+  --border:     rgba(255,255,255,0.12);
+  --gold:       #FFD700;
+  --radius-sm:  8px;
+  --radius:     16px;
+  --radius-lg:  24px;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ============ パーティクルキャンバス ============ */
+#particles-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* ============ 背景の波 ============ */
+.ocean-bg {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%; height: 200px;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.wave {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 120px;
+  border-radius: 50% 50% 0 0;
+  opacity: 0.06;
+  animation: wave-move 8s linear infinite;
+}
+.wave1 { background: var(--primary); animation-duration: 8s; height: 120px; }
+.wave2 { background: var(--secondary); animation-duration: 12s; height: 90px; animation-delay: -2s; opacity: 0.04; }
+.wave3 { background: var(--accent); animation-duration: 16s; height: 70px; animation-delay: -4s; opacity: 0.03; }
+
+@keyframes wave-move {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(50%); }
+}
+
+/* ============ 画面管理 ============ */
+.screen {
+  display: none;
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+.screen.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============ カード ============ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(59,130,246,0.05);
+}
+
+/* ============ ロゴ & タイトル ============ */
+.logo {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 20px rgba(245,158,11,0.5));
+  animation: logo-float 3s ease-in-out infinite;
+}
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.game-title {
+  font-size: 36px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--gold), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 4px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+  font-size: 13px;
+}
+
+/* ============ フォーム ============ */
+.input-label {
+  display: block;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  margin-top: 12px;
+  letter-spacing: 0.5px;
+}
+
+.input-field {
+  width: 100%;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  padding: 12px 16px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  margin-bottom: 4px;
+}
+.input-field::placeholder { color: var(--text-muted); }
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+
+.name-input { font-size: 16px; margin-bottom: 24px; }
+.code-input {
+  flex: 1;
+  font-size: 20px;
+  letter-spacing: 4px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.setup-form { margin-top: 8px; }
+
+.help-link {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ============ ボタン ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 24px;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.2s;
+}
+.btn:hover::after { background: rgba(255,255,255,0.08); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled::after { display: none; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+  width: 100%;
+  margin-top: 16px;
+}
+.btn-primary:hover { box-shadow: 0 6px 24px rgba(59,130,246,0.5); }
+
+.btn-secondary {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 100%;
+}
+
+.btn-danger {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #fca5a5;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.btn-large { font-size: 16px; padding: 14px 28px; }
+.btn-icon  { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px; }
+.btn-icon-sm { background: rgba(255,255,255,0.1); border: none; cursor: pointer; font-size: 14px; padding: 4px 8px; border-radius: 6px; }
+.btn-icon-sm:hover { background: rgba(255,255,255,0.2); }
+
+.hidden { display: none !important; }
+
+/* ============ ロビー ============ */
+.lobby-actions { margin-top: 8px; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 16px 0;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.join-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============ 待機室 ============ */
+.waiting-card { max-width: 440px; }
+
+.room-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 16px 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+}
+.room-info-label { color: var(--text-muted); font-size: 12px; }
+.room-code-badge {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(255,215,0,0.4);
+}
+
+.waiting-players {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  min-height: 100px;
+}
+
+.waiting-player-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  animation: slide-in 0.3s ease;
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.player-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.waiting-player-name { flex: 1; font-weight: 600; }
+.host-badge {
+  font-size: 10px;
+  background: rgba(245,158,11,0.2);
+  border: 1px solid rgba(245,158,11,0.4);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.status-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 8px 0;
+}
+.waiting-btns { display: flex; flex-direction: column; gap: 8px; }
+
+/* ============ ゲームヘッダー ============ */
+.game-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(6,11,31,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+}
+
+.header-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.badge {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-turn {
+  background: rgba(59,130,246,0.15);
+  border-color: rgba(59,130,246,0.3);
+  color: #93c5fd;
+}
+.badge-rolls {
+  background: rgba(245,158,11,0.15);
+  border-color: rgba(245,158,11,0.3);
+  color: #fcd34d;
+}
+
+/* ============ ゲームボディ ============ */
+#game-screen {
+  display: none;
+  flex-direction: column;
+  min-height: 100vh;
+}
+#game-screen.active { display: flex; }
+
+.game-body {
+  display: flex;
+  flex: 1;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* ============ サイコロエリア ============ */
+.dice-area {
+  flex: 0 0 340px;
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0,0,0,0.2);
+}
+
+.dice-stage {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 10px;
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dice-container {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  perspective: 800px;
+}
+
+/* ============ 3Dサイコロ ============ */
+.die-wrapper {
+  perspective: 600px;
+  width: 72px;
+  height: 72px;
+}
+
+.die {
+  width: 72px;
+  height: 72px;
+  position: relative;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  transform: rotateX(0deg) rotateY(0deg);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+  transition: transform 0.2s ease, filter 0.2s ease;
+  user-select: none;
+}
+
+.die:hover:not(.rolling):not(.held) {
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.3)) drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+}
+
+.die.held {
+  filter: drop-shadow(0 0 16px rgba(255,215,0,0.9)) drop-shadow(0 4px 10px rgba(0,0,0,0.3)) !important;
+  transform: translateY(-12px) scale(1.08) !important;
+}
+
+.die-face {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid rgba(0,0,0,0.15);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 8px;
+  gap: 3px;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.8),
+    inset 0 -2px 4px rgba(0,0,0,0.15),
+    0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* 各面の配置 */
+.die-face.face-front  { transform: rotateY(0deg)    translateZ(36px); }
+.die-face.face-back   { transform: rotateY(180deg)  translateZ(36px); }
+.die-face.face-right  { transform: rotateY(90deg)   translateZ(36px); }
+.die-face.face-left   { transform: rotateY(-90deg)  translateZ(36px); }
+.die-face.face-top    { transform: rotateX(90deg)   translateZ(36px); }
+.die-face.face-bottom { transform: rotateX(-90deg)  translateZ(36px); }
+
+.pip {
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.1s;
+}
+.pip.active {
+  background: radial-gradient(circle, #1a1a2e 0%, #2d3561 100%);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(255,255,255,0.3);
+}
+
+/* ホールドラベル */
+.hold-label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--gold);
+  white-space: nowrap;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(255,215,0,0.6);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.die.held + .hold-label,
+.die-wrapper.held-wrapper .hold-label {
+  opacity: 1;
+}
+
+/* ============ 派手なサイコロアニメーション ============ */
+@keyframes dice-roll-1 {
+  0%   { transform: rotateX(0) rotateY(0) rotateZ(0) translateX(0) translateY(0) scale(1); filter: brightness(1) drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+  8%   { transform: rotateX(280deg) rotateY(130deg) rotateZ(70deg) translateX(-15px) translateY(-40px) scale(1.15); filter: brightness(1.4) drop-shadow(0 0 20px rgba(100,200,255,0.8)); }
+  18%  { transform: rotateX(640deg) rotateY(360deg) rotateZ(180deg) translateX(20px) translateY(-100px) scale(1.25); filter: brightness(1.8) drop-shadow(0 0 30px rgba(255,150,50,0.9)); }
+  30%  { transform: rotateX(1080deg) rotateY(660deg) rotateZ(300deg) translateX(-35px) translateY(-130px) scale(1.3); filter: brightness(2.2) drop-shadow(0 0 40px rgba(255,50,200,1)); }
+  42%  { transform: rotateX(1500deg) rotateY(960deg) rotateZ(420deg) translateX(40px) translateY(-110px) scale(1.2); filter: brightness(1.8) drop-shadow(0 0 30px rgba(100,255,100,0.8)); }
+  55%  { transform: rotateX(1900deg) rotateY(1260deg) rotateZ(540deg) translateX(-25px) translateY(-80px) scale(1.15); filter: brightness(1.5) drop-shadow(0 0 20px rgba(255,215,0,0.7)); }
+  68%  { transform: rotateX(2280deg) rotateY(1520deg) rotateZ(640deg) translateX(20px) translateY(-50px) scale(1.08); filter: brightness(1.3) drop-shadow(0 0 15px rgba(100,200,255,0.5)); }
+  80%  { transform: rotateX(2600deg) rotateY(1760deg) rotateZ(730deg) translateX(-10px) translateY(-25px) scale(1.04); filter: brightness(1.15); }
+  90%  { transform: rotateX(2850deg) rotateY(1920deg) rotateZ(800deg) translateX(5px) translateY(-8px) scale(1.01); filter: brightness(1.05); }
+  96%  { transform: rotateX(2980deg) rotateY(2010deg) rotateZ(840deg) translateX(-2px) translateY(-2px) scale(1); }
+  100% { transform: rotateX(3240deg) rotateY(2160deg) rotateZ(900deg) translateX(0) translateY(0) scale(1); filter: brightness(1) drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+}
+
+@keyframes dice-roll-2 {
+  0%   { transform: rotateX(0) rotateY(0) rotateZ(0) translateX(0) translateY(0) scale(1); }
+  10%  { transform: rotateX(-300deg) rotateY(200deg) rotateZ(-90deg) translateX(25px) translateY(-50px) scale(1.2); filter: brightness(1.6) drop-shadow(0 0 25px rgba(255,100,100,0.8)); }
+  22%  { transform: rotateX(-720deg) rotateY(480deg) rotateZ(-200deg) translateX(-30px) translateY(-110px) scale(1.28); filter: brightness(2.0) drop-shadow(0 0 35px rgba(100,100,255,0.9)); }
+  35%  { transform: rotateX(-1200deg) rotateY(780deg) rotateZ(-330deg) translateX(45px) translateY(-140px) scale(1.32); filter: brightness(2.3) drop-shadow(0 0 45px rgba(255,200,0,1)); }
+  48%  { transform: rotateX(-1600deg) rotateY(1060deg) rotateZ(-440deg) translateX(-40px) translateY(-100px) scale(1.2); filter: brightness(1.7); }
+  62%  { transform: rotateX(-2000deg) rotateY(1340deg) rotateZ(-560deg) translateX(25px) translateY(-65px) scale(1.1); filter: brightness(1.4); }
+  75%  { transform: rotateX(-2350deg) rotateY(1580deg) rotateZ(-660deg) translateX(-15px) translateY(-35px) scale(1.05); }
+  88%  { transform: rotateX(-2650deg) rotateY(1790deg) rotateZ(-750deg) translateX(8px) translateY(-12px) scale(1.02); }
+  96%  { transform: rotateX(-2840deg) rotateY(1920deg) rotateZ(-810deg) translateX(-2px) translateY(-3px) scale(1.0); }
+  100% { transform: rotateX(-3240deg) rotateY(2160deg) rotateZ(-900deg) translateX(0) translateY(0) scale(1); }
+}
+
+@keyframes dice-roll-3 {
+  0%   { transform: rotateX(0) rotateY(0) rotateZ(0) translateX(0) translateY(0); }
+  12%  { transform: rotateX(400deg) rotateY(-250deg) rotateZ(120deg) translateX(-20px) translateY(-70px) scale(1.22); filter: brightness(1.7) drop-shadow(0 0 28px rgba(0,255,200,0.9)); }
+  25%  { transform: rotateX(900deg) rotateY(-600deg) rotateZ(270deg) translateX(30px) translateY(-120px) scale(1.3); filter: brightness(2.1) drop-shadow(0 0 42px rgba(255,0,150,1)); }
+  40%  { transform: rotateX(1400deg) rotateY(-950deg) rotateZ(400deg) translateX(-45px) translateY(-150px) scale(1.35); filter: brightness(2.4); }
+  55%  { transform: rotateX(1800deg) rotateY(-1200deg) rotateZ(520deg) translateX(35px) translateY(-100px) scale(1.2); }
+  70%  { transform: rotateX(2200deg) rotateY(-1450deg) rotateZ(630deg) translateX(-20px) translateY(-60px) scale(1.1); }
+  85%  { transform: rotateX(2600deg) rotateY(-1700deg) rotateZ(750deg) translateX(10px) translateY(-25px) scale(1.04); }
+  95%  { transform: rotateX(2900deg) rotateY(-1900deg) rotateZ(840deg) translateX(-3px) translateY(-5px) scale(1.01); }
+  100% { transform: rotateX(3240deg) rotateY(-2160deg) rotateZ(900deg) translateX(0) translateY(0) scale(1); }
+}
+
+.die.rolling-anim-1 {
+  animation: dice-roll-1 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  pointer-events: none;
+}
+.die.rolling-anim-2 {
+  animation: dice-roll-2 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  pointer-events: none;
+}
+.die.rolling-anim-3 {
+  animation: dice-roll-3 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+/* グロー点滅（振る前のシェイク） */
+@keyframes pre-roll-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15%       { transform: translateX(-6px) rotate(-3deg) scale(1.05); }
+  30%       { transform: translateX(6px) rotate(3deg) scale(1.05); }
+  45%       { transform: translateX(-4px) rotate(-2deg); }
+  60%       { transform: translateX(4px) rotate(2deg); }
+  75%       { transform: translateX(-2px) rotate(-1deg); }
+}
+.die.pre-shake {
+  animation: pre-roll-shake 0.5s ease;
+}
+
+/* ============ 振るボタン ============ */
+.dice-controls { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+
+.btn-roll {
+  background: linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6);
+  background-size: 200% 200%;
+  color: white;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 14px 40px;
+  border-radius: 40px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 30px rgba(245,158,11,0.4), 0 0 60px rgba(245,158,11,0.15);
+  animation: roll-btn-pulse 2.5s ease-in-out infinite;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 2px;
+}
+.btn-roll::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: conic-gradient(transparent 0deg, rgba(255,255,255,0.3) 60deg, transparent 120deg);
+  animation: roll-btn-shine 3s linear infinite;
+}
+@keyframes roll-btn-shine {
+  to { transform: rotate(360deg); }
+}
+@keyframes roll-btn-pulse {
+  0%, 100% { box-shadow: 0 6px 30px rgba(245,158,11,0.4), 0 0 60px rgba(245,158,11,0.15); transform: scale(1); }
+  50%       { box-shadow: 0 8px 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.25); transform: scale(1.02); }
+}
+.btn-roll:hover:not(:disabled) {
+  transform: scale(1.05) !important;
+  box-shadow: 0 10px 50px rgba(245,158,11,0.6), 0 0 100px rgba(245,158,11,0.3) !important;
+}
+.btn-roll:active:not(:disabled) { transform: scale(0.96) !important; }
+.btn-roll:disabled {
+  opacity: 0.35;
+  animation: none;
+  cursor: not-allowed;
+}
+
+.roll-btn-icon { font-size: 22px; display: inline-block; }
+.roll-btn-text { position: relative; z-index: 1; }
+
+.hint-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.not-my-turn {
+  color: #f87171;
+  font-size: 13px;
+}
+
+/* ============ プレイヤー状態リスト ============ */
+.player-status-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player-status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.player-status-item.active-player {
+  border-color: rgba(59,130,246,0.5);
+  background: rgba(59,130,246,0.1);
+}
+.player-status-item .ps-name { flex: 1; font-weight: 600; }
+.player-status-item .ps-score { color: var(--accent); font-weight: 700; }
+
+/* ============ スコアエリア ============ */
+.score-area {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.score-area::-webkit-scrollbar { width: 4px; }
+.score-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.score-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.score-table-wrapper { overflow-x: auto; }
+
+.score-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 300px;
+  font-size: 13px;
+}
+
+.score-table th {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.score-table th.my-col { background: rgba(59,130,246,0.15); color: #93c5fd; }
+
+.score-table td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.score-table .cat-name {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 6px 12px;
+}
+.score-table .cat-name small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.score-row:hover td { background: rgba(255,255,255,0.04); }
+
+.score-cell.selectable {
+  cursor: pointer;
+  color: rgba(100,200,255,0.6);
+  font-style: italic;
+  transition: background 0.15s, color 0.15s;
+}
+.score-cell.selectable:hover {
+  background: rgba(59,130,246,0.2) !important;
+  color: #93c5fd;
+}
+
+.score-cell.filled { color: var(--text); font-weight: 700; }
+.score-cell.filled.zero { color: rgba(255,100,100,0.6); font-weight: 400; }
+
+.section-header td {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+}
+
+.bonus-row td { color: var(--success); font-weight: 700; }
+.total-row td {
+  background: rgba(255,255,255,0.06) !important;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+/* ============ 結果画面 ============ */
+#result-screen {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#result-screen.active { display: flex; }
+
+.result-card {
+  text-align: center;
+  padding: 60px 40px;
+  max-width: 540px;
+  width: 100%;
+}
+
+.winner-trophy {
+  font-size: 80px;
+  animation: trophy-bounce 1s ease-in-out infinite;
+  line-height: 1;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 0 30px rgba(255,215,0,0.6));
+}
+@keyframes trophy-bounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50%       { transform: translateY(-15px) rotate(5deg) scale(1.1); }
+}
+
+.winner-text {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--gold), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 32px;
+}
+
+.final-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  animation: slide-in 0.4s ease backwards;
+}
+.ranking-item:nth-child(1) { animation-delay: 0.1s; border-color: rgba(255,215,0,0.5); background: rgba(255,215,0,0.08); }
+.ranking-item:nth-child(2) { animation-delay: 0.2s; border-color: rgba(192,192,192,0.4); }
+.ranking-item:nth-child(3) { animation-delay: 0.3s; border-color: rgba(205,127,50,0.4); }
+.ranking-item:nth-child(4) { animation-delay: 0.4s; }
+
+.rank-num { font-size: 22px; width: 36px; text-align: center; flex-shrink: 0; }
+.rank-name { flex: 1; font-weight: 700; font-size: 16px; }
+.rank-score { font-size: 20px; font-weight: 800; color: var(--gold); }
+
+/* ============ トースト ============ */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: rgba(30,40,70,0.95);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  padding: 12px 28px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+  pointer-events: none;
+  opacity: 0;
+  white-space: nowrap;
+}
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+.toast.success { border-color: rgba(34,197,94,0.4); color: #86efac; }
+.toast.error   { border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+.toast.info    { border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+
+/* ============ ヨット演出 ============ */
+.yacht-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+}
+
+.yacht-text {
+  font-size: 64px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #FFD700, #FF6600, #FF0099);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 6px;
+  animation: yacht-pop 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes yacht-pop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  40%  { transform: scale(1.3) rotate(5deg);  opacity: 1; }
+  60%  { transform: scale(0.95) rotate(-2deg); }
+  80%  { transform: scale(1.1) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* ============ レスポンシブ ============ */
+@media (max-width: 768px) {
+  .game-body { flex-direction: column; }
+  .dice-area { flex: none; width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  .score-area { flex: none; }
+
+  .die-wrapper { width: 58px; height: 58px; }
+  .die { width: 58px; height: 58px; }
+  .die-face { width: 58px; height: 58px; padding: 6px; }
+  .die-face.face-front  { transform: rotateY(0deg)    translateZ(29px); }
+  .die-face.face-back   { transform: rotateY(180deg)  translateZ(29px); }
+  .die-face.face-right  { transform: rotateY(90deg)   translateZ(29px); }
+  .die-face.face-left   { transform: rotateY(-90deg)  translateZ(29px); }
+  .die-face.face-top    { transform: rotateX(90deg)   translateZ(29px); }
+  .die-face.face-bottom { transform: rotateX(-90deg)  translateZ(29px); }
+
+  .card { padding: 28px 20px; }
+  .game-title { font-size: 28px; }
+  .yacht-text { font-size: 40px; }
+}
+
+@media (max-width: 480px) {
+  .dice-container { gap: 6px; }
+  .die-wrapper { width: 50px; height: 50px; }
+  .die { width: 50px; height: 50px; }
+  .die-face { width: 50px; height: 50px; padding: 5px; gap: 2px; }
+  .die-face.face-front  { transform: rotateY(0deg)    translateZ(25px); }
+  .die-face.face-back   { transform: rotateY(180deg)  translateZ(25px); }
+  .die-face.face-right  { transform: rotateY(90deg)   translateZ(25px); }
+  .die-face.face-left   { transform: rotateY(-90deg)  translateZ(25px); }
+  .die-face.face-top    { transform: rotateX(90deg)   translateZ(25px); }
+  .die-face.face-bottom { transform: rotateX(-90deg)  translateZ(25px); }
+}
+
+/* ============ スクロールバー ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ============ セレクションカラー ============ */
+::selection { background: rgba(59,130,246,0.3); }

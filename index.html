@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚓ ヨットダイスゲーム</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- パーティクルキャンバス -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- 背景の波 -->
+  <div class="ocean-bg">
+    <div class="wave wave1"></div>
+    <div class="wave wave2"></div>
+    <div class="wave wave3"></div>
+  </div>
+
+  <!-- ========== 設定画面 ========== -->
+  <div id="setup-screen" class="screen active">
+    <div class="card setup-card">
+      <div class="logo">⚓</div>
+      <h1 class="game-title">ヨット</h1>
+      <p class="subtitle">ダイスゲーム ✕ オンライン対戦</p>
+      <div class="setup-form">
+        <label class="input-label">Supabase URL</label>
+        <input type="text" id="supabase-url" placeholder="https://xxxxxxxxxx.supabase.co" class="input-field" autocomplete="off">
+        <label class="input-label">Supabase Anon Key</label>
+        <input type="text" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="input-field" autocomplete="off">
+        <button id="connect-btn" class="btn btn-primary">接続する</button>
+      </div>
+      <p class="help-link">Supabaseの設定方法は <strong>README.md</strong> を参照してください</p>
+    </div>
+  </div>
+
+  <!-- ========== ロビー画面 ========== -->
+  <div id="lobby-screen" class="screen">
+    <div class="card lobby-card">
+      <div class="logo">⚓</div>
+      <h1 class="game-title">ヨット</h1>
+      <input type="text" id="player-name" placeholder="あなたの名前（最大10文字）" maxlength="10" class="input-field name-input">
+      <div class="lobby-actions">
+        <button id="create-room-btn" class="btn btn-primary btn-large">
+          <span class="btn-icon">🏠</span>ルームを作成
+        </button>
+        <div class="divider"><span>または</span></div>
+        <div class="join-section">
+          <input type="text" id="room-code-input" placeholder="ルームコード (例: AB12)" maxlength="4" class="input-field code-input" style="text-transform:uppercase">
+          <button id="join-room-btn" class="btn btn-secondary btn-large">
+            <span class="btn-icon">🚪</span>参加する
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 待機室 ========== -->
+  <div id="waiting-screen" class="screen">
+    <div class="card waiting-card">
+      <div class="logo">⚓</div>
+      <h2>待機室</h2>
+      <div class="room-info">
+        <span class="room-info-label">ルームコード</span>
+        <span id="room-code-show" class="room-code-badge">----</span>
+        <button id="copy-code-btn" class="btn-icon-sm" title="コピー">📋</button>
+      </div>
+      <div id="waiting-players" class="waiting-players"></div>
+      <p id="waiting-status" class="status-text">プレイヤーを待っています... (1/4)</p>
+      <div class="waiting-btns">
+        <button id="start-game-btn" class="btn btn-primary hidden">🎮 ゲーム開始！</button>
+        <button id="leave-room-btn" class="btn btn-danger">↩ 退出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ゲーム画面 ========== -->
+  <div id="game-screen" class="screen">
+    <!-- ゲームヘッダー -->
+    <div class="game-header">
+      <div class="header-badges">
+        <span class="badge badge-round">ラウンド <span id="round-num">1</span>/12</span>
+        <span class="badge badge-turn">🎮 <span id="current-turn">-</span>のターン</span>
+        <span class="badge badge-rolls">🎲 残り<span id="rolls-left">3</span>回</span>
+      </div>
+    </div>
+
+    <div class="game-body">
+      <!-- 左側: サイコロエリア -->
+      <div class="dice-area">
+        <div class="dice-stage">
+          <div id="dice-container" class="dice-container">
+            <!-- サイコロはJSで生成 -->
+          </div>
+        </div>
+
+        <div class="dice-controls">
+          <button id="roll-btn" class="btn btn-roll" disabled>
+            <span class="roll-btn-icon">🎲</span>
+            <span class="roll-btn-text">振る！</span>
+          </button>
+          <p id="hold-hint" class="hint-text hidden">💡 サイコロをクリックしてホールド</p>
+          <p id="my-turn-hint" class="hint-text not-my-turn">⏳ 他のプレイヤーのターンです</p>
+        </div>
+
+        <!-- プレイヤー情報 -->
+        <div id="player-status-list" class="player-status-list"></div>
+      </div>
+
+      <!-- 右側: スコアシート -->
+      <div class="score-area">
+        <h3 class="score-title">📊 スコアシート</h3>
+        <div class="score-table-wrapper">
+          <table id="score-table" class="score-table">
+            <!-- JSで生成 -->
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 結果画面 ========== -->
+  <div id="result-screen" class="screen">
+    <div class="result-card">
+      <div id="winner-trophy" class="winner-trophy">🏆</div>
+      <h1 id="winner-text" class="winner-text">勝者: -</h1>
+      <div id="final-ranking" class="final-ranking"></div>
+      <button id="play-again-btn" class="btn btn-primary btn-large">🔄 もう一度プレイ</button>
+    </div>
+  </div>
+
+  <!-- ========== トースト通知 ========== -->
+  <div id="toast" class="toast"></div>
+
+  <!-- ========== ヨット演出オーバーレイ ========== -->
+  <div id="yacht-overlay" class="yacht-overlay hidden">
+    <div class="yacht-text">🎊 YACHT!! 🎊</div>
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
